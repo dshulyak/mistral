@@ -73,3 +73,26 @@ class ExecutorClient(object):
         :type kwargs: dict
         """
         return self._client.cast(cntx, 'handle_task', **kwargs)
+
+
+class DistributedExecutorClient(object):
+
+    def __init__(self, transport):
+        """Construct an RPC client for the Executor.
+
+        :param transport: a messaging transport handle
+        :type transport: Transport
+        """
+        target = messaging.Target()
+        self._client = messaging.RPCClient(transport, target)
+
+    def handle_task(self, cntx, **kwargs):
+        """Executor client that supports execution of same task
+        on each node.
+        """
+        target = kwargs.get('target')
+        topic = cfg.CONF.executor.topic
+        if target:
+            topic = '{0}.{1}'.format(topic, target)
+        return self._client.prepare(topic=topic).cast(
+            cntx, 'handle_task', **kwargs)

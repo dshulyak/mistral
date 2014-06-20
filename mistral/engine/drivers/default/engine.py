@@ -44,3 +44,22 @@ class DefaultEngine(engine.Engine):
         # since it makes transaction much longer in time and under load
         # may overload DB with open transactions.
         self._notify_task_executors(tasks)
+
+
+class DistributedEngine(DefaultEngine):
+
+    def _notify_task_executors(self, tasks):
+        if not self.transport:
+            self.transport = messaging.get_transport(cfg.CONF)
+        exctr = executor.DistributedExecutorClient(self.transport)
+        for task in tasks:
+            # TODO(m4dcoder): Fill request context argument with auth info
+            targets = task['parameters'].get('targets')
+            if targets:
+                for t in targets:
+                    context = {}
+                    exctr.handle_task(context, task=task, target=t)
+            else:
+                context = {}
+                exctr.handle_task(context, task=task)
+            LOG.info("Submitted task for execution: '%s'" % task)
