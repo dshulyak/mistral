@@ -23,6 +23,7 @@ from mistral.actions import base
 from mistral import exceptions as exc
 from mistral import expressions as expr
 from mistral.openstack.common import log as logging
+from mistral.openstack.common import processutils
 from mistral.utils import ssh_utils
 
 
@@ -266,6 +267,20 @@ class SSHAction(base.Action):
             return result
         except Exception as e:
             return raise_exc(parent_exc=e)
+
+
+class CmdAction(base.Action):
+
+    def __init__(self, cmd, **execute_params):
+        self.cmd = cmd
+        self.execute_params = execute_params
+
+    def run(self):
+        LOG.info('Running CmdAction action [cmd=%s]', self.cmd)
+        result = processutils.execute(*self.cmd, **self.execute_params)
+        LOG.debug('Command %s stdout: "%s"', self.cmd, result[0])
+        LOG.debug('Command %s stderr: "%s"', self.cmd, result[1])
+        return result
 
 
 class AdHocAction(base.Action):
