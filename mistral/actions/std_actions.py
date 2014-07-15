@@ -18,6 +18,7 @@ from email.mime import text
 import json
 import requests
 import smtplib
+import xmlrpclib
 
 import yaml
 
@@ -302,6 +303,19 @@ class CmdAction(base.Action):
         LOG.debug('Command %s stdout: "%s"', self.cmd, result[0])
         LOG.debug('Command %s stderr: "%s"', self.cmd, result[1])
         return result
+
+
+class XmlrpcAction(base.Action):
+
+    def __init__(self, url, action, *args, **kwargs):
+        self.url = url
+        self.action = action
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self):
+        server = xmlrpclib.Server(self.url)
+        return getattr(self.sever, self.action)(*self.args, **self.kwargs)
 
 
 class AdHocAction(base.Action):
