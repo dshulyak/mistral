@@ -1,0 +1,54 @@
+Namespaces:
+  MyService:
+    actions:
+      cmd:
+        class: std.cmd
+        base-parameters:
+          cmd: $.cmd
+      copy_yaml:
+        class: std.file
+        base-parameters:
+          path: $.path
+          data: $.data
+          format: yaml
+      rsync:
+        class: std.cmd
+        base-parameters:
+          cmd: "rsync -c -r --delete {$.source} {$.dest}"
+        parameters:
+          - source
+          - dest
+      deploy:
+        class: std.cmd
+        base-parameters:
+          cmd: '/usr/bin/puppet apply /etc/puppet/manifests/site.pp'
+      echo_deploy:
+        class: std.cmd
+        base-parameters:
+          cmd: 'echo deploy'
+
+Workflow:
+
+  tasks:
+    copy_yaml:
+      action: MyService.copy_yaml
+      parameters:
+        targets: [$.uid]
+        data: $
+        path: $.path
+    rsync_puppet:
+      action: MyService.rsync
+      parameters:
+        targets: [$.uid]
+        source: $.source
+        dest: $.dest
+    deploy_echo:
+      requires: [copy_yaml, rsync_puppet]
+      action: MyService.echo_deploy
+      parameters:
+        targets: [$.uid]
+    deploy:
+      requires: [copy_yaml, rsync_puppet]
+      action: MyService.deploy
+      parameters:
+        targets: [$.uid]

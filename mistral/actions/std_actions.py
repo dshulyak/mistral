@@ -193,19 +193,37 @@ class MistralHTTPAction(HTTPAction):
 
 class CmdCreateFile(base.Action):
 
-    def __init__(self, path, data=''):
+    def __init__(self, path, data='', format='plain'):
         self.path = path
         self.data = data
         self.directory = os.path.dirname(self.path)
-        self.format = format
+        self.formatter = self.get_formatter(format)
 
-    def run(self):
+    def get_formatter(self, format):
+        formatters = {'plain': self.to_plain,
+                      'json': self.to_json,
+                      'yaml': self.to_yaml}
+        return formatters['format']
+
+    def to_yaml(self):
+        return yaml.safe_dump(self.data, default_flow_style=False)
+
+    def to_json(self):
+        return json.dumps(self.data)
+
+    def to_plain(self):
+        return str(self.data)
+
+    def ensure_path(self):
         if not os.path.exists(self.directory):
             os.mkdir(self.directory)
         if os.path.exists(self.path):
             os.unlink(self.path)
+
+    def run(self):
+        self.ensure_path()
         with open(self.path, 'w') as f:
-            data = yaml.safe_dump(self.data, default_flow_style=False)
+            data = self.formatter()
             LOG.debug('Data is %s', data)
             f.write(data)
         return 0
@@ -315,7 +333,7 @@ class XmlrpcAction(base.Action):
 
     def run(self):
         server = xmlrpclib.Server(self.url)
-        return getattr(self.sever, self.action)(*self.args, **self.kwargs)
+        return getattr(server, self.action)(*self.args, **self.kwargs)
 
 
 class AdHocAction(base.Action):
