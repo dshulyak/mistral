@@ -13,11 +13,13 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-
+import os
 from email.mime import text
 import json
 import requests
 import smtplib
+
+import yaml
 
 from mistral.actions import base
 from mistral import exceptions as exc
@@ -188,6 +190,26 @@ class MistralHTTPAction(HTTPAction):
         return False
 
 
+class CmdCreateFile(base.Action):
+
+    def __init__(self, path, data=''):
+        self.path = path
+        self.data = data
+        self.directory = os.path.dirname(self.path)
+        self.format = format
+
+    def run(self):
+        if not os.path.exists(self.directory):
+            os.mkdir(self.directory)
+        if os.path.exists(self.path):
+            os.unlink(self.path)
+        with open(self.path, 'w') as f:
+            data = yaml.safe_dump(self.data, default_flow_style=False)
+            LOG.debug('Data is %s', data)
+            f.write(data)
+        return 0
+
+
 class SendEmailAction(base.Action):
     def __init__(self, params, settings):
         # TODO(dzimine): validate parameters
@@ -271,13 +293,12 @@ class SSHAction(base.Action):
 
 class CmdAction(base.Action):
 
-    def __init__(self, cmd, **execute_params):
+    def __init__(self, cmd):
         self.cmd = cmd
-        self.execute_params = execute_params
 
     def run(self):
         LOG.info('Running CmdAction action [cmd=%s]', self.cmd)
-        result = processutils.execute(*self.cmd, **self.execute_params)
+        result = processutils.execute(self.cmd, shell=True)
         LOG.debug('Command %s stdout: "%s"', self.cmd, result[0])
         LOG.debug('Command %s stderr: "%s"', self.cmd, result[1])
         return result
